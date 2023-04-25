@@ -11,10 +11,50 @@ let adminChatIDs = [
   1362468778
 ]
 
+let commands = 
+  `Questa è la lista dei comandi:\n\n` +
+  `1. Comando: /newPoll nomesondaggio\n` +
+  `Descrizione: serve a creare nuovi sondaggi\n` + 
+  `Esempio: /newPoll uborc\n\n` +
+  `2. /vote nomesondaggio voto\n` + 
+  `Descrizione: serve a votare un sondaggio\n` + 
+  `Esempio: /vote uborc 8\n\n` +
+  `3. /pollsList\n` +
+  `Descrizione: serve a visualizzare la lista dei sondaggi\n\n` +
+  `4. /viewPoll nomesondaggio\n` +
+  `Descrizione: serve a visualizzare i dettagli di un sondaggio\n` + 
+  `Esempio: /viewPoll uborc\n\n` + 
+  `5. /commands\n` + 
+  `Descrizione: serve a visualizzare la lista dei comandi del bot\n\n` +
+  `6. /requestAdmin\n` + 
+  `Descrizione: serve a richiedere i poteri di amministrazione\n\n` +
+  `Questo è tutto! Per avere altre informazioni o in caso di perpresittà` +
+  `contatta il mitico creatore di questo meraviglioso bot: @ThatsHakoda`
+
 bot.onText(/\/start/, (msg, match) => {
   const chatID = msg.chat.id
+  const nomeUtente = msg.from.first_name
+  const message = `Benvenuto ${nomeUtente}!\n` + commands
 
-  bot.sendMessage(chatID, "Benvenuto!")
+  bot.sendMessage(chatID, message)
+})
+
+bot.onText(/\/requestAdmin/, (msg, match) => {
+  const chatID = msg.chat.id
+  const nomeUtente = msg.from.first_name
+
+  const message = 
+    `L'utente ${nomeUtente} ha fatto richiesta di diventare amministratore\n\n` + 
+    `ID Utente: ${chatID}`
+
+  bot.sendMessage(chatID, "La richiesta è appena stata inviata a @ThatsHakdoa")
+  bot.sendMessage(adminChatIDs[0], message)
+})
+
+bot.onText(/\/commands/, (msg, match) => {
+  const chatID = msg.chat.id
+
+  bot.sendMessage(chatID, commands)
 })
 
 bot.onText(RegExp(/\/newPoll (.+)/), async (msg, match) => {
@@ -42,37 +82,71 @@ bot.onText(RegExp(/\/newPoll (.+)/), async (msg, match) => {
 bot.onText(/\/vote (.+) (.+)/, async (msg, match) => {
   const chatID = msg.chat.id
   const pollName = match[1]
-  const pollAnswer = match[2]
+  const pollVote = parseInt(match[2])
 
-  if (pollAnswer < 0 || pollAnswer > 10) {
+  const previousVotes = await databaseQuery(`SELECT * FROM Answers WHERE UserChatID = '${chatID}';`)
+
+  console.log(previousVotes)
+
+  if (previousVotes.length != 0) {
+    bot.sendMessage(chatID, "Hai già votato questo sondaggio!")
+    return
+  }
+
+  if (pollVote < 0 || pollVote > 10) {
     bot.sendMessage(chatID, "Perfavore, inserire un voto tra 0 e 10")
     return
   }
   
   const poll = await databaseQuery(`SELECT * FROM Polls WHERE Name='${pollName}';`)
-  console.log(poll)
 
   if (poll.length == 0) {
     bot.sendMessage(chatID, "Il sondaggio selezionato non esiste")
     return
-  } 
+  }
 
-  const answersNumber = poll[0].Answers + 1
-  const pollID = poll[0].PollID
+  databaseQuery(`INSERT INTO Answers (UserChatID, PollName, Answer) VALUES ('${chatID}', '${pollName}', '${pollVote}');`)
 
-  const pollAnswers = await databaseQuery(`SELECT * FROM Answers WHERE PollID = '${pollID}'`)
+  let newAverage = ((poll[0].Average * poll[0].Answers) + pollVote) / (poll[0].Answers + 1)
+  let answersNumber = poll[0].Answers + 1
 
-  let average = 0
-  for (answer of pollAnswers)
-    average += answer.Answer
-  average /= answersNumber
+  databaseQuery(`UPDATE Polls SET Answers = '${answersNumber}', Average = '${newAverage}' WHERE Name = '${pollName}';`)
 
-  databaseQuery(`INSERT INTO Answers (UserChatID, PollID, Answer) VALUES ('${chatID}', '${pollID}', '${pollAnswer}');`)
-  databaseQuery(`UPDATE Polls SET Answers = '${answersNumber}', Average = '${average}' WHERE PollID = '${pollID}';`)
+  bot.sendMessage(chatID, "Hai votato con successo!")
+})
+
+bot.onText(/\/pollsList/, async (msg, match) => {
+  const chatID = msg.chat.id
+
+  let polls = await databaseQuery('SELECT * FROM Polls;')
+
+  let message = "Ecco la lista dei sondaggi creati:\n\n"
+  polls.forEach(poll => {
+    message += `${poll.PollID}. ${poll.Name}\n`
+  })
+  message += "\nPer visualizzare più informazioni su un sondaggio, digita il comando seguente comando:\n\n/viewPoll nomesondaggio"
+
+  bot.sendMessage(chatID, message)
+})
+
+bot.onText(/\/viewPoll (.+)/, async (msg, match) => {
+  const chatID = msg.chat.id
+  const pollName = match[1]
+
+  const poll = await databaseQuery(`SELECT * FROM Polls WHERE Name = '${pollName}'`)
+
+  let message = 
+    `Ecco le informazioni del sondaggio selezionato:\n\n` +
+    `Nome del sondaggio: ${poll[0].Name}\n` +
+    `Numero di risposte: ${poll[0].Answers}\n` +
+    `Media delle risposte: ${poll[0].Average}\n\n` +
+    `Per visualizzare la lista dei sondaggi, digita il seguente comando:\n\n/pollsList`
+
+  bot.sendMessage(chatID, message)
 })
 
 bot.on('message', (msg) => {
   const chatID = msg.chat.id
 })
 
-bot.on('polling_error', console.log)
+bot.on('polling_error', console.log) // Non ho la più pallida idea di come funzioni

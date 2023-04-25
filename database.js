@@ -14,16 +14,17 @@ async function databaseQuery(queryCommand) {
   try {
     connection = await pool.getConnection();
     await connection.query("USE SistemiBot;")
+    
     result = await connection.query(queryCommand)
-
-    if(connection)
-      connection.end()
 
   } catch (error) {
 	  throw error
+  } finally {
+    if(connection) 
+      connection.end()
   }
 
-  return result
+  return result 
 }
 
 module.exports.databaseQuery = databaseQuery

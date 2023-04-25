@@ -1,3 +1,4 @@
+DROP DATABASE SistemiBot;
 CREATE DATABASE SistemiBot;
 USE SistemiBot;
 
@@ -11,8 +12,8 @@ CREATE TABLE Polls (
 
 CREATE TABLE Answers (
   AnswerID INT NOT NULL AUTO_INCREMENT,
-  UserChatID INT NOT NULL,
-  PollID INT NOT NULL,
+  UserChatID BIGINT NOT NULL,
+  PollName VARCHAR(50) NOT NULL,
   Answer INT NOT NULL,
   PRIMARY KEY(AnswerID)
 );
