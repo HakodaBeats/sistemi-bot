@@ -36,6 +36,8 @@ bot.onText(/\/start/, (msg, match) => {
   const nomeUtente = msg.from.first_name
   const message = `Benvenuto ${nomeUtente}!\n` + commands
 
+  console.log(`Nuovo accesso da ${chatID} - Username: ${nomeUtente}`)
+
   bot.sendMessage(chatID, message)
 })
 
@@ -47,6 +49,8 @@ bot.onText(/\/requestAdmin/, (msg, match) => {
     `L'utente ${nomeUtente} ha fatto richiesta di diventare amministratore\n\n` + 
     `ID Utente: ${chatID}`
 
+  console.log(`Richiesta di amministrazione da ${chatID} - Username: ${nomeUtente}`)
+
   bot.sendMessage(chatID, "La richiesta è appena stata inviata a @ThatsHakdoa")
   bot.sendMessage(adminChatIDs[0], message)
 })
@@ -57,7 +61,7 @@ bot.onText(/\/commands/, (msg, match) => {
   bot.sendMessage(chatID, commands)
 })
 
-bot.onText(RegExp(/\/newPoll (.+)/), async (msg, match) => {
+bot.onText(/\/newPoll (.+)/, async (msg, match) => {
   console.log(msg.chat.id)
 
   const chatID = msg.chat.id
@@ -76,6 +80,8 @@ bot.onText(RegExp(/\/newPoll (.+)/), async (msg, match) => {
     }
   }
 
+  console.log(`Tentativo di creazione di sondaggio da ${chatID} - Username: ${nomeUtente}`)
+
   bot.sendMessage(chatID, response)
 });
 
@@ -84,7 +90,7 @@ bot.onText(/\/vote (.+) (.+)/, async (msg, match) => {
   const pollName = match[1]
   const pollVote = parseInt(match[2])
 
-  const previousVotes = await databaseQuery(`SELECT * FROM Answers WHERE UserChatID = '${chatID}';`)
+  const previousVotes = await databaseQuery(`SELECT * FROM Answers WHERE UserChatID = '${chatID}' AND PollName = '${pollName}';`)
 
   console.log(previousVotes)
 
@@ -111,6 +117,8 @@ bot.onText(/\/vote (.+) (.+)/, async (msg, match) => {
   let answersNumber = poll[0].Answers + 1
 
   databaseQuery(`UPDATE Polls SET Answers = '${answersNumber}', Average = '${newAverage}' WHERE Name = '${pollName}';`)
+  
+  console.log(`Tentativo di voto da ${chatID} - Username: ${nomeUtente}`)
 
   bot.sendMessage(chatID, "Hai votato con successo!")
 })
@@ -126,6 +134,8 @@ bot.onText(/\/pollsList/, async (msg, match) => {
   })
   message += "\nPer visualizzare più informazioni su un sondaggio, digita il comando seguente comando:\n\n/viewPoll nomesondaggio"
 
+  console.log(`Visualizzazione della lista sondaggi da ${chatID} - Username: ${nomeUtente}`)
+
   bot.sendMessage(chatID, message)
 })
 
@@ -135,18 +145,21 @@ bot.onText(/\/viewPoll (.+)/, async (msg, match) => {
 
   const poll = await databaseQuery(`SELECT * FROM Polls WHERE Name = '${pollName}'`)
 
+  if(poll.length == 0) {
+    bot.sendMessage(chatID, "Il sondaggio richiesto non esiste")
+    return
+  }
+
   let message = 
     `Ecco le informazioni del sondaggio selezionato:\n\n` +
     `Nome del sondaggio: ${poll[0].Name}\n` +
     `Numero di risposte: ${poll[0].Answers}\n` +
-    `Media delle risposte: ${poll[0].Average}\n\n` +
+    `Media delle risposte: ${poll[0].Average.toFixed(2)}\n\n` +
     `Per visualizzare la lista dei sondaggi, digita il seguente comando:\n\n/pollsList`
 
-  bot.sendMessage(chatID, message)
-})
+  console.log(`Visualizzazione statistiche sondaggio da ${chatID} - Username: ${nomeUtente}`)
 
-bot.on('message', (msg) => {
-  const chatID = msg.chat.id
+  bot.sendMessage(chatID, message)
 })
 
 bot.on('polling_error', console.log) // Non ho la più pallida idea di come funzioni
